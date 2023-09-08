@@ -107,6 +107,22 @@ public:
   void send_bytes(const uint8_t * src, size_t len);
 
   /**
+   * @brief Send bytes from a buffer over the port
+   * @param bytes the buffer
+   */
+  template<size_t Len>
+  void send_bytes(const std::array<uint8_t, Len>& bytes)
+  {
+    mutex_lock lock(write_mutex_);
+    for (size_t pos = 0; pos < Len; pos += WRITE_BUFFER_SIZE)
+    {
+      size_t num_bytes = (Len - pos) > WRITE_BUFFER_SIZE ? WRITE_BUFFER_SIZE : (Len - pos);
+      write_queue_.emplace_back(bytes.data() + pos, num_bytes);
+    }
+    async_write(true);
+  }
+
+  /**
    * @brief Send a single byte over the port
    * @param data Byte to send
    */
