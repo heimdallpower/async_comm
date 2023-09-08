@@ -74,8 +74,9 @@ public:
    */
   bool set_baud_rate(unsigned int baud_rate);
 
-private:
   bool is_open() override;
+  
+private:
   bool do_init() override;
   void do_close() override;
   void do_async_read(const boost::asio::mutable_buffers_1 &buffer,

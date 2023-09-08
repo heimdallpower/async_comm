@@ -154,6 +154,8 @@ public:
    */
   void register_listener(CommListener &listener);
 
+  virtual bool is_open() = 0;
+  
 protected:
 
   static constexpr size_t READ_BUFFER_SIZE = 1024;
@@ -161,7 +163,6 @@ protected:
 
   static DefaultMessageHandler default_message_handler_;
 
-  virtual bool is_open() = 0;
   virtual bool do_init() = 0;
   virtual void do_close() = 0;
   virtual void do_async_read(const boost::asio::mutable_buffers_1 &buffer,

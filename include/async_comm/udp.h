@@ -69,13 +69,14 @@ public:
       MessageHandler& message_handler = default_message_handler_);
   ~UDP();
 
+  bool is_open() override;
+  
 private:
   static constexpr auto DEFAULT_BIND_HOST = "localhost";
   static constexpr uint16_t DEFAULT_BIND_PORT = 16140;
   static constexpr auto DEFAULT_REMOTE_HOST = "localhost";
   static constexpr uint16_t DEFAULT_REMOTE_PORT = 16145;
 
-  bool is_open() override;
   bool do_init() override;
   void do_close() override;
   void do_async_read(const boost::asio::mutable_buffers_1 &buffer,
