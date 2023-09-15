@@ -66,7 +66,7 @@ bool Serial::set_baud_rate(unsigned int baud_rate)
   }
   catch (boost::system::system_error e)
   {
-    message_handler_.error(e.what());
+    message_handler_.error(e.code());
     return false;
   }
 
@@ -91,7 +91,7 @@ bool Serial::do_init()
   }
   catch (boost::system::system_error e)
   {
-    message_handler_.error(e.what());
+    message_handler_.error(e.code());
     return false;
   }
 
