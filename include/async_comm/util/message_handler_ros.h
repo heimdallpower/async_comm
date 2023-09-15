@@ -57,11 +57,11 @@ namespace util
 class MessageHandlerROS : public MessageHandler
 {
 public:
-  inline void debug(const std::string &message) override { ROS_DEBUG("[async_comm]: %s", message.c_str()); }
-  inline void  info(const std::string &message) override { ROS_INFO("[async_comm]: %s", message.c_str()); }
-  inline void  warn(const std::string &message) override { ROS_WARN("[async_comm]: %s", message.c_str()); }
-  inline void error(const std::string &message) override { ROS_ERROR("[async_comm]: %s", message.c_str()); }
-  inline void fatal(const std::string &message) override { ROS_FATAL("[async_comm]: %s", message.c_str()); }
+  inline void debug(const boost::system::error_code& code) override { ROS_DEBUG_STREAM("[async_comm]: " << code.message()); }
+  inline void  info(const boost::system::error_code& code) override { ROS_INFO_STREAM("[async_comm]: " << code.message()); }
+  inline void  warn(const boost::system::error_code& code) override { ROS_WARN_STREAM("[async_comm]: " << code.message()); }
+  inline void error(const boost::system::error_code& code) override { ROS_ERROR_STREAM("[async_comm]: " << code.message()); }
+  inline void fatal(const boost::system::error_code& code) override { ROS_FATAL_STREAM("[async_comm]: " << code.message()); }
 };
 
 } // namespace util
