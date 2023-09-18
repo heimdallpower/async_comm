@@ -132,8 +132,8 @@ void Comm::async_read_end(const boost::system::error_code &error, size_t bytes_t
 {
   if (error)
   {
-    message_handler_.error(error);
     close();
+    message_handler_.error(error);
     return;
   }
 
@@ -169,8 +169,8 @@ void Comm::async_write_end(const boost::system::error_code &error, size_t bytes_
 {
   if (error)
   {
-    message_handler_.error(error);
     close();
+    message_handler_.error(error);
     return;
   }
 
