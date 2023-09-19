@@ -23,7 +23,7 @@ target_compile_options(${PROJECT_NAME} PRIVATE -std=c++11)
 target_link_libraries(${PROJECT_NAME} ${Boost_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
 
 # examples
-option(ASYNC_COMM_BUILD_EXAMPLES "Build examples" OFF)
+option(ASYNC_COMM_BUILD_EXAMPLES "Build examples" ON)
 
 if(ASYNC_COMM_BUILD_EXAMPLES)
   add_executable(udp_hello_world examples/udp_hello_world.cpp)

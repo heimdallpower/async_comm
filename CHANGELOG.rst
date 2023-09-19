@@ -15,10 +15,10 @@ Changelog for package async_comm
 
 0.2.0 (2020-03-16)
 ------------------
-* Fix for UDP/TCP when loopback is only device with an address
+* Fix for UDPImpl/TCP when loopback is only device with an address
 * Added listener interface
 * Added custom message handler functionality
-* TCPClient class implementing an async tcp client
+* TCPClientImpl class implementing an async tcp client
 * Contributors: Daniel Koch, James Jackson, Rein Appeldoorn
 
 0.1.1 (2019-02-21)

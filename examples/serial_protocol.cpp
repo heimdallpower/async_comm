@@ -53,7 +53,7 @@
  * The parser is implemented as a finite state machine.
  */
 
-#include <async_comm/serial.h>
+#include <async_comm/serial.hpp>
 
 #include <cstdint>
 #include <cstdio>
@@ -263,7 +263,7 @@ int main(int argc, char** argv)
   }
 
   // open serial port
-  async_comm::Serial serial(port, BAUD_RATE);
+  async_comm::Serial<1024> serial(std::string{port}, static_cast<unsigned int>(BAUD_RATE));
   serial.register_receive_callback(&callback);
 
   if (!serial.open())

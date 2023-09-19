@@ -45,7 +45,7 @@
 #include <list>
 #include <mutex>
 #include <thread>
-
+#include <boost/bind.hpp>
 #include <boost/asio.hpp>
 #include <boost/function.hpp>
 
@@ -78,6 +78,7 @@ public:
  * @class Comm
  * @brief Abstract base class for an asynchronous communication port
  */
+template<typename Impl, typename MessageHandlerType = DefaultMessageHandler>
 class Comm
 {
 public:
@@ -85,26 +86,87 @@ public:
    * @brief Set up asynchronous communication base class
    * @param message_handler Custom message handler, or omit for default handler
    */
-  Comm(MessageHandler& message_handler = default_message_handler_);
-  virtual ~Comm();
+  template<class... Args>
+  Comm(Args&&... args):
+  message_handler_{},
+  io_service_{},
+  new_data_{false},
+  shutdown_requested_{false},
+  write_in_progress_{false},
+  io_thread_{std::thread(boost::bind(&boost::asio::io_service::run, &this->io_service_))},
+  callback_thread_{std::thread(std::bind(&Comm::process_callbacks, this))},
+  impl_{io_service_, std::forward<Args>(args)...}
+  {}
+
+  ~Comm()
+  {
+    // send shutdown signal to callback thread
+    {
+      std::unique_lock<std::mutex> lock(callback_mutex_);
+      shutdown_requested_ = true;
+    }
+    condition_variable_.notify_one();
+
+    io_service_.stop();
+    impl_.close();
+    if (io_thread_.joinable())
+    {
+      io_thread_.join();
+    }
+
+    if (callback_thread_.joinable())
+    {
+      callback_thread_.join();
+    }
+  }
+
+  bool is_open() { return impl_.is_open(); };
 
   /**
    * @brief Initializes and opens the port
    * @return True if the port was succesfully initialized
    */
-  virtual bool open() = 0;
+  bool open()
+  {
+    try
+    {
+      impl_.open();
+      async_read();
+    }
+    catch (boost::system::system_error e)
+    {
+      message_handler_.init_error(e.code());
+      return false;
+    }
+    return true;
+  }
 
   /**
    * @brief Closes the port
    */
-  virtual void close() = 0;
+  void close() { impl_.close(); };
 
   /**
    * @brief Send bytes from a buffer over the port
    * @param src Address of the buffer
    * @param len Number of bytes to send
    */
-  bool send_bytes(const uint8_t * src, size_t len);
+  bool send_bytes(const uint8_t * src, size_t len)
+  {
+    if (!is_open())
+      return false;
+  
+    mutex_lock lock(write_mutex_);
+
+    for (size_t pos = 0; pos < len; pos += Impl::WRITE_BUFFER_SIZE)
+    {
+      const size_t num_bytes{(len - pos) > Impl::WRITE_BUFFER_SIZE ? Impl::WRITE_BUFFER_SIZE : (len - pos)};
+      write_queue_.emplace_back(src + pos, num_bytes);
+    }
+
+    async_write(true);
+    return true;
+  }
 
   /**
    * @brief Send bytes from a buffer over the port
@@ -117,9 +179,9 @@ public:
       return false;
     
     mutex_lock lock(write_mutex_);
-    for (size_t pos = 0; pos < Len; pos += WRITE_BUFFER_SIZE)
+    for (size_t pos = 0; pos < Len; pos += Impl::WRITE_BUFFER_SIZE)
     {
-      size_t num_bytes = (Len - pos) > WRITE_BUFFER_SIZE ? WRITE_BUFFER_SIZE : (Len - pos);
+      const size_t num_bytes{(Len - pos) > Impl::WRITE_BUFFER_SIZE ? Impl::WRITE_BUFFER_SIZE : (Len - pos)};
       write_queue_.emplace_back(bytes.data() + pos, num_bytes);
     }
     async_write(true);
@@ -145,7 +207,10 @@ public:
    *
    * @param fun Function to call when bytes are received
    */
-  void register_receive_callback(std::function<void(const uint8_t*, size_t)> fun);
+  void register_receive_callback(std::function<void(const uint8_t*, size_t)> fun)
+  {
+    receive_callback_ = fun;
+  }
 
   /**
    * @brief Register a listener for when bytes are received on the port
@@ -156,42 +221,43 @@ public:
    *
    * @param listener Reference to listener
    */
-  void register_listener(CommListener &listener);
-
-  virtual bool is_open() = 0;
-  
-protected:
-
-  static constexpr size_t READ_BUFFER_SIZE = 1024;
-  static constexpr size_t WRITE_BUFFER_SIZE = 1024;
-
-  static DefaultMessageHandler default_message_handler_;
-
-  virtual void do_async_read(const boost::asio::mutable_buffers_1 &buffer,
-                             boost::function<void(const boost::system::error_code&, size_t)> handler) = 0;
-  virtual void do_async_write(const boost::asio::const_buffers_1 &buffer,
-                              boost::function<void(const boost::system::error_code&, size_t)> handler) = 0;
-
-  MessageHandler& message_handler_;
-  boost::asio::io_service io_service_;
-
+  void register_listener(CommListener &listener)
+  {
+    listeners_.push_back(listener);
+  }
 private:
+
+  void async_read()
+  {
+    if (!is_open())
+      return;
+
+    impl_.do_async_read(
+      boost::asio::buffer(read_buffer_, Impl::READ_BUFFER_SIZE),
+      boost::bind(
+        &Comm::async_read_end,
+        this,
+        boost::asio::placeholders::error,
+        boost::asio::placeholders::bytes_transferred
+      )
+    );
+  }
 
   struct ReadBuffer
   {
-    uint8_t data[READ_BUFFER_SIZE];
+    uint8_t data[Impl::READ_BUFFER_SIZE];
     size_t len;
 
     ReadBuffer(const uint8_t * buf, size_t len) : len(len)
     {
-      assert(len <= READ_BUFFER_SIZE); // only checks in debug mode
+      assert(len <= Impl::READ_BUFFER_SIZE); // only checks in debug mode
       memcpy(data, buf, len);
     }
   };
 
   struct WriteBuffer
   {
-    uint8_t data[WRITE_BUFFER_SIZE];
+    uint8_t data[Impl::WRITE_BUFFER_SIZE];
     size_t len;
     size_t pos;
 
@@ -199,7 +265,7 @@ private:
 
     WriteBuffer(const uint8_t * buf, size_t len) : len(len), pos(0)
     {
-      assert(len <= WRITE_BUFFER_SIZE); // only checks in debug mode
+      assert(len <= Impl::WRITE_BUFFER_SIZE); // only checks in debug mode
       memcpy(data, buf, len);
     }
 
@@ -210,18 +276,118 @@ private:
 
   typedef std::lock_guard<std::recursive_mutex> mutex_lock;
 
-  void async_read();
-  void async_read_end(const boost::system::error_code& error, size_t bytes_transferred);
+  void async_read_end(const boost::system::error_code& error, size_t bytes_transferred)
+  {
+    if (error)
+    {
+      impl_.close();
+      message_handler_.runtime_error(error);
+      return;
+    }
 
-  void async_write(bool check_write_state);
-  void async_write_end(const boost::system::error_code& error, size_t bytes_transferred);
+    {
+      std::unique_lock<std::mutex> lock(callback_mutex_);
+      read_queue_.emplace_back(read_buffer_, bytes_transferred);
+      new_data_ = true;
+    }
+    condition_variable_.notify_one();
 
-  void process_callbacks();
+    async_read();
+  }
 
+  void async_write(bool check_write_state)
+  {
+    if (check_write_state && write_in_progress_)
+      return;
+
+    mutex_lock lock(write_mutex_);
+    if (write_queue_.empty())
+      return;
+
+    write_in_progress_ = true;
+    WriteBuffer& buffer = write_queue_.front();
+    impl_.do_async_write(
+      boost::asio::buffer(buffer.dpos(), buffer.nbytes()),
+      boost::bind(&Comm::async_write_end,
+        this,
+        boost::asio::placeholders::error,
+        boost::asio::placeholders::bytes_transferred
+      )
+    );
+  }
+
+  void async_write_end(const boost::system::error_code& error, size_t bytes_transferred)
+  {
+    if (error)
+    {
+      impl_.close();
+      message_handler_.runtime_error(error);
+      return;
+    }
+
+    mutex_lock lock(write_mutex_);
+    if (write_queue_.empty())
+    {
+      write_in_progress_ = false;
+      return;
+    }
+
+    WriteBuffer& buffer = write_queue_.front();
+    buffer.pos += bytes_transferred;
+    if (buffer.nbytes() == 0)
+    {
+      write_queue_.pop_front();
+    }
+
+    if (write_queue_.empty())
+      write_in_progress_ = false;
+    else
+      async_write(false);
+  }
+
+  void process_callbacks()
+  {
+    std::list<ReadBuffer> local_queue;
+
+    while (true)
+    {
+      // wait for either new data or a shutdown request
+      std::unique_lock<std::mutex> lock(callback_mutex_);
+      condition_variable_.wait(lock, [this]{ return new_data_ || shutdown_requested_; });
+
+      // if shutdown requested, end thread execution
+      if (shutdown_requested_)
+      {
+        break;
+      }
+
+      // move data to local buffer
+      local_queue.splice(local_queue.end(), read_queue_);
+
+      // release mutex to allow continued asynchronous read operations
+      new_data_ = false;
+      lock.unlock();
+
+      // execute callbacks for all new data
+      while (!local_queue.empty())
+      {
+        ReadBuffer buffer = local_queue.front();
+        if (receive_callback_)
+          receive_callback_(buffer.data, buffer.len);
+        for (std::reference_wrapper<CommListener> listener_ref : listeners_)
+          listener_ref.get().receive_callback(buffer.data, buffer.len);
+
+        local_queue.pop_front();
+      }
+    }
+  }
+
+  MessageHandlerType message_handler_;
+  boost::asio::io_service io_service_;
   std::thread io_thread_;
   std::thread callback_thread_;
 
-  uint8_t read_buffer_[READ_BUFFER_SIZE];
+  uint8_t read_buffer_[Impl::READ_BUFFER_SIZE];
   std::list<ReadBuffer> read_queue_;
   std::mutex callback_mutex_;
   std::condition_variable condition_variable_;
@@ -234,6 +400,8 @@ private:
 
   std::function<void(const uint8_t *, size_t)> receive_callback_ = nullptr;
   std::vector<std::reference_wrapper<CommListener>> listeners_;
+
+  Impl impl_;
 };
 
 } // namespace async_comm

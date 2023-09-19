@@ -50,34 +50,70 @@ namespace async_comm
 {
 
 /**
- * @class TCPClient
+ * @class TCPClientImpl
  * @brief Asynchronous communication class for a TCP client
  */
-class TCPClient : public Comm
+template<size_t ReadBufferSize = 1024u, size_t WriteBufferSize = ReadBufferSize>
+class TCPClientImpl
 {
 public:
+  static constexpr size_t READ_BUFFER_SIZE{ReadBufferSize};
+  static constexpr size_t WRITE_BUFFER_SIZE{WriteBufferSize};
+
   /**
    * @brief Connect to a TCP socket as a client
    * @param host The host where the TCP server is running
    * @param port The port on which the TCP server is listening
    * @param message_handler Custom message handler, or omit for default handler
    */
-  TCPClient(std::string host = DEFAULT_HOST, uint16_t port = DEFAULT_PORT,
-            MessageHandler& message_handler = default_message_handler_);
-  ~TCPClient();
+  TCPClientImpl(
+    boost::asio::io_service& io_service,
+    std::string host = DEFAULT_HOST,
+    uint16_t port = DEFAULT_PORT
+  ):
+  host_(host),
+  port_(port),
+  socket_(io_service)
+  {}
 
-  bool is_open() override;
-  
-  void close() override;
-  bool open() override;
+  bool is_open() const { return socket_.is_open(); }
+  void close() { socket_.close(); }
+  bool open()
+  {
+    using boost::asio::ip::tcp;
+
+    tcp::resolver resolver(socket_.get_io_service());
+
+    endpoint_ = *resolver.resolve({tcp::v4(), host_, "", boost::asio::ip::resolver_query_base::numeric_service});
+    endpoint_.port(port_);
+    socket_.open(tcp::v4());
+
+    socket_.connect(endpoint_);
+
+    socket_.set_option(tcp::socket::reuse_address(true));
+    socket_.set_option(tcp::socket::send_buffer_size(WRITE_BUFFER_SIZE*1024));
+    socket_.set_option(tcp::socket::receive_buffer_size(READ_BUFFER_SIZE*1024));
+  }
+  void do_async_read
+  (
+    const boost::asio::mutable_buffers_1 &buffer,
+    boost::function<void(const boost::system::error_code&, size_t)> handler
+  )
+  {
+    socket_.async_receive(buffer, handler);
+  }
+
+  void do_async_write
+  (
+    const boost::asio::const_buffers_1 &buffer,
+    boost::function<void(const boost::system::error_code&, size_t)> handler
+  )
+  {
+    socket_.async_send(buffer, handler);
+  }
 private:
   static constexpr auto DEFAULT_HOST = "localhost";
   static constexpr uint16_t DEFAULT_PORT = 16140;
-
-  void do_async_read(const boost::asio::mutable_buffers_1 &buffer,
-                     boost::function<void(const boost::system::error_code&, size_t)> handler) override;
-  void do_async_write(const boost::asio::const_buffers_1 &buffer,
-                      boost::function<void(const boost::system::error_code&, size_t)> handler) override;
 
   std::string host_;
   uint16_t port_;

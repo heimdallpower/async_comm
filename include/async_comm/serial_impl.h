@@ -39,54 +39,73 @@
 #define ASYNC_COMM_SERIAL_H
 
 #include <string>
-
 #include <boost/asio.hpp>
 #include <boost/function.hpp>
-
-#include <async_comm/message_handler.h>
-#include <async_comm/comm.h>
 
 namespace async_comm
 {
 
 /**
- * @class Serial
+ * @class SerialImpl
  * @brief Asynchronous communication class for a serial port
  */
-class Serial : public Comm
+template<size_t ReadBufferSize = 1024u, size_t WriteBufferSize = ReadBufferSize>
+class SerialImpl
 {
 public:
+  static constexpr size_t READ_BUFFER_SIZE{ReadBufferSize};
+  static constexpr size_t WRITE_BUFFER_SIZE{WriteBufferSize};
   /**
    * @brief Open a serial port
    * @param port The port to open (e.g. "/dev/ttyUSB0")
    * @param baud_rate The baud rate for the serial port (e.g. 115200)
-   * @param message_handler Custom message handler, or omit for default handler
+   * @param io_service
    *
    */
-  Serial(std::string port, unsigned int baud_rate, MessageHandler& message_handler = default_message_handler_);
-  ~Serial();
+  SerialImpl(
+    boost::asio::io_service& io_service,
+    const std::string port,
+    const unsigned int baud_rate
+  ):
+  port_{port},
+  baud_rate_{baud_rate},
+  serial_port_{io_service}
+  {}
 
+  bool is_open() const { return serial_port_.is_open(); }
+  void close() { serial_port_.close(); }
+  void open()
+  {
+    using boost::asio::serial_port_base;
 
-  /**
-   * @brief Set serial port baud rate
-   * @param baud_rate The baud rate for the serial port (e.g. 115200)
-   * @return True if successful
-   */
-  bool set_baud_rate(unsigned int baud_rate);
+    serial_port_.open(port_);
+    serial_port_.set_option(serial_port_base::baud_rate(baud_rate_));
+    serial_port_.set_option(serial_port_base::character_size(8));
+    serial_port_.set_option(serial_port_base::parity(serial_port_base::parity::none));
+    serial_port_.set_option(serial_port_base::stop_bits(serial_port_base::stop_bits::one));
+    serial_port_.set_option(serial_port_base::flow_control(serial_port_base::flow_control::none));
+  }
 
-  bool is_open() override;
-  
-  void close() override;
-  bool open() override;
+  void do_async_read
+  (
+    const boost::asio::mutable_buffers_1 &buffer,
+    boost::function<void(const boost::system::error_code&, size_t)> handler
+  )
+  {
+    serial_port_.async_read_some(buffer, handler);
+  }
+
+  void do_async_write(
+    const boost::asio::const_buffers_1 &buffer,
+    boost::function<void(const boost::system::error_code&, size_t)> handler
+  )
+  {
+    serial_port_.async_write_some(buffer, handler);
+  }
+
 private:
-  void do_async_read(const boost::asio::mutable_buffers_1 &buffer,
-                     boost::function<void(const boost::system::error_code&, size_t)> handler) override;
-  void do_async_write(const boost::asio::const_buffers_1 &buffer,
-                      boost::function<void(const boost::system::error_code&, size_t)> handler) override;
-
   std::string port_;
   unsigned int baud_rate_;
-
   boost::asio::serial_port serial_port_;
 };
 

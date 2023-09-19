@@ -38,7 +38,7 @@
  * Sends a series of bytes out and prints them to the console as they are received back.
  */
 
-#include <async_comm/serial.h>
+#include <async_comm/serial.hpp>
 
 #include <cstdint>
 #include <cstdio>
@@ -82,7 +82,7 @@ int main(int argc, char** argv)
   }
 
   // open serial port
-  async_comm::Serial serial(port, 115200);
+  async_comm::Serial<1024> serial{std::string{port}, 115200u};
   serial.register_receive_callback(&callback);
 
   if (!serial.open())

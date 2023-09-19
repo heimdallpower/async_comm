@@ -34,11 +34,11 @@
  * @file udp_hello_world.cpp
  * @author Daniel Koch <danielpkoch@gmail.com>
  *
- * This example opens two UDP objects listening on different ports on the local host, and then uses each to send a
+ * This example opens two UDPImpl objects listening on different ports on the local host, and then uses each to send a
  * simple "hello world" message to the other.
  */
 
-#include <async_comm/udp.h>
+#include <async_comm/udp.hpp>
 
 #include <cstdint>
 #include <cstring>
@@ -68,16 +68,21 @@ void callback(const uint8_t* buf, size_t len)
 
 int main()
 {
-  // open UDP ports
-  async_comm::UDP udp1("localhost", 14620, "localhost", 14625);
+  const std::string host1{"localhost"};
+  const uint16_t port1{14620};
+  const std::string host2{"localhost"};
+  const uint16_t port2{14625};
+  
+  async_comm::UDP<1024> udp1(host1, port1, host2, port2);
+  // open UDPImpl ports
   udp1.register_receive_callback(&callback);
 
-  async_comm::UDP udp2("localhost", 14625, "localhost", 14620);
+  async_comm::UDP<1024> udp2(host2, port2, host1, port1);
   udp2.register_receive_callback(&callback);
 
   if (!udp1.open() || !udp2.open())
   {
-    std::cout << "Failed to open UDP ports" << std::endl;
+    std::cout << "Failed to open UDPImpl ports" << std::endl;
     return 1;
   }
 
@@ -99,7 +104,7 @@ int main()
 
   std::cout.flush();
 
-  // close UDP ports
+  // close UDPImpl ports
   udp1.close();
   udp2.close();
 
