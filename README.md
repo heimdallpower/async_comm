@@ -137,7 +137,7 @@ where `serial_` is an instance of `async_comm::SerialImpl`.
 
 ## Message Handlers
 
-It is possible to implement custom handlers for the error messages and other messages produced by the library. To create a message handler, simply inherit from the `MessageHandler` abstract base class defined in `include/async_comm/message_handler.h`, and override the pure virtual functions.
+It is possible to implement custom handlers for the error messages and other messages produced by the library. To create a message handler, simply inherit from the `MessageHandler` abstract base class defined in `include/async_comm/error_handler.hpp`, and override the pure virtual functions.
 
 Each of the user-facing classes accepts, as an optional final argument, a reference to a class that derives from `MessageHandler`. To use a custom message handler, simply create an instance of your handler and pass it as that optional argument. When that argument is omitted, the library uses a default message handler that prints to `stdout` and `stderr`.
 

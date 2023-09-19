@@ -50,7 +50,7 @@
 #include <boost/function.hpp>
 #include <boost/none.hpp>
 
-#include <async_comm/message_handler.h>
+#include <async_comm/error_handler.hpp>
 
 namespace async_comm
 {
@@ -79,7 +79,7 @@ public:
  * @class Comm
  * @brief Abstract base class for an asynchronous communication port
  */
-template<typename Impl, typename MessageHandlerType = DefaultMessageHandler>
+template<typename Impl, typename ErrorHandlerType = DefaultErrorHandler>
 class Comm
 {
 public:
@@ -129,7 +129,7 @@ public:
     }
     catch (boost::system::system_error e)
     {
-      message_handler_.init_error(e.code());
+      message_handler_.during_operation(e.code());
       return false;
     }
     async_read();
@@ -280,7 +280,7 @@ private:
         return;
       
       close();
-      message_handler_.runtime_error(error);
+      message_handler_.on_open(error);
       return;
     }
 
@@ -323,7 +323,7 @@ private:
         return;
       
       close();
-      message_handler_.runtime_error(error);
+      message_handler_.on_open(error);
       return;
     }
 
@@ -388,7 +388,7 @@ private:
   bool shutdown_requested_{false};
   bool write_in_progress_{false};
 
-  MessageHandlerType message_handler_{};
+  ErrorHandlerType message_handler_{};
   boost::asio::io_service io_service_{};
 
   uint8_t read_buffer_[Impl::READ_BUFFER_SIZE]{0u};

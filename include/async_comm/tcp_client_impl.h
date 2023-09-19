@@ -43,7 +43,7 @@
 #include <boost/asio.hpp>
 #include <boost/function.hpp>
 
-#include <async_comm/message_handler.h>
+#include <async_comm/error_handler.hpp>
 #include <async_comm/comm.h>
 
 namespace async_comm

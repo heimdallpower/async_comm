@@ -31,7 +31,7 @@
  */
 
 /**
- * @file message_handler.h
+ * @file error_handler.hpp
  * @author Daniel Koch <danielpkoch@gmail.com>
  */
 
@@ -46,37 +46,29 @@ namespace async_comm
 {
 
 /**
- * @class MessageHandler
+ * @class ErrorHandler
  * @brief Abstract base class for message handler
  *
  * The implementations of this class define how messages are displayed, logged,
  * etc. To create custom behavior, derive from this base class and override the
  * pure virtual functions.
  */
-class MessageHandler
+class ErrorHandler
 {
 public:
-  virtual void debug(const boost::system::error_code& code) = 0;
-  virtual void info(const boost::system::error_code& code)  = 0;
-  virtual void warn(const boost::system::error_code& code)  = 0;
-  virtual void runtime_error(const boost::system::error_code& code) = 0;
-  virtual void init_error(const boost::system::error_code& code) = 0;
-  virtual void fatal(const boost::system::error_code& code) = 0;
+  virtual void on_open(const boost::system::error_code& code) = 0;
+  virtual void during_operation(const boost::system::error_code& code) = 0;
 };
 
 /**
- * @class DefaultMessageHandler
+ * @class DefaultErrorHandler
  * @brief Default message handler that outputs to stdout and stderr
  */
-class DefaultMessageHandler : public MessageHandler
+class DefaultErrorHandler : public ErrorHandler
 {
 public:
-  inline void debug(const boost::system::error_code &code) override { std::cout << "[async_comm][DEBUG]: " << code.message() << std::endl; }
-  inline void info(const boost::system::error_code &code) override { std::cout << "[async_comm][INFO]: " << code.message() << std::endl; }
-  inline void warn(const boost::system::error_code &code) override { std::cerr << "[async_comm][WARN]: " << code.message() << std::endl; }
-  inline void runtime_error(const boost::system::error_code &code) override { std::cerr << "[async_comm][runtime ERROR]: " << code.message() << std::endl; }
-  inline void init_error(const boost::system::error_code& code) override { std::cerr << "[async_comm][init ERROR]: " << code.message() << std::endl; }
-  inline void fatal(const boost::system::error_code &code) override { std::cerr << "[async_comm][FATAL]: " << code.message() << std::endl; }
+  inline void on_open(const boost::system::error_code &code) override { std::cerr << "[async_comm][on open ERROR]: " << code.message() << std::endl; }
+  inline void during_operation(const boost::system::error_code& code) override { std::cerr << "[async_comm][during operation ERROR]: " << code.message() << std::endl; }
 };
 
 } // namespace async_comm
