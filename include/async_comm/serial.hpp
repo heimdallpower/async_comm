@@ -6,5 +6,5 @@
 namespace async_comm
 {
 template<class MessageHandlerType = DefaultMessageHandler, size_t ReadBufferSize = 1024, size_t WriteBufferSize = ReadBufferSize>
-using Serial = async_comm::Comm<async_comm::SerialImpl<ReadBufferSize, WriteBufferSize>, DefaultMessageHandler>;
+using Serial = async_comm::Comm<async_comm::SerialImpl<ReadBufferSize, WriteBufferSize>, MessageHandlerType>;
 } // namespace async_comm

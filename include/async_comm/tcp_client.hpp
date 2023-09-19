@@ -6,5 +6,5 @@
 namespace async_comm
 {
 template<class MessageHandlerType = DefaultMessageHandler, size_t ReadBufferSize = 1024, size_t WriteBufferSize = ReadBufferSize>
-using TCPClient = async_comm::Comm<async_comm::TCPClientImpl<ReadBufferSize, WriteBufferSize>, DefaultMessageHandler>;
+using TCPClient = async_comm::Comm<async_comm::TCPClientImpl<ReadBufferSize, WriteBufferSize>, MessageHandlerType>;
 } // namespace async_comm
