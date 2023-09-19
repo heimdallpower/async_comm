@@ -59,7 +59,8 @@ public:
   virtual void debug(const boost::system::error_code& code) = 0;
   virtual void info(const boost::system::error_code& code)  = 0;
   virtual void warn(const boost::system::error_code& code)  = 0;
-  virtual void error(const boost::system::error_code& code) = 0;
+  virtual void runtime_error(const boost::system::error_code& code) = 0;
+  virtual void init_error(const boost::system::error_code& code) = 0;
   virtual void fatal(const boost::system::error_code& code) = 0;
 };
 
@@ -73,7 +74,8 @@ public:
   inline void debug(const boost::system::error_code &code) override { std::cout << "[async_comm][DEBUG]: " << code.message() << std::endl; }
   inline void info(const boost::system::error_code &code) override { std::cout << "[async_comm][INFO]: " << code.message() << std::endl; }
   inline void warn(const boost::system::error_code &code) override { std::cerr << "[async_comm][WARN]: " << code.message() << std::endl; }
-  inline void error(const boost::system::error_code &code) override { std::cerr << "[async_comm][ERROR]: " << code.message() << std::endl; }
+  inline void runtime_error(const boost::system::error_code &code) override { std::cerr << "[async_comm][runtime ERROR]: " << code.message() << std::endl; }
+  inline void init_error(const boost::system::error_code& code) override { std::cerr << "[async_comm][init ERROR]: " << code.message() << std::endl; }
   inline void fatal(const boost::system::error_code &code) override { std::cerr << "[async_comm][FATAL]: " << code.message() << std::endl; }
 };
 

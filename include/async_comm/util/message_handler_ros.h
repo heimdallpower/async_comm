@@ -58,9 +58,10 @@ class MessageHandlerROS : public MessageHandler
 {
 public:
   inline void debug(const boost::system::error_code& code) override { ROS_DEBUG_STREAM("[async_comm]: " << code.message()); }
-  inline void  info(const boost::system::error_code& code) override { ROS_INFO_STREAM("[async_comm]: " << code.message()); }
-  inline void  warn(const boost::system::error_code& code) override { ROS_WARN_STREAM("[async_comm]: " << code.message()); }
-  inline void error(const boost::system::error_code& code) override { ROS_ERROR_STREAM("[async_comm]: " << code.message()); }
+  inline void info(const boost::system::error_code& code) override { ROS_INFO_STREAM("[async_comm]: " << code.message()); }
+  inline void warn(const boost::system::error_code& code) override { ROS_WARN_STREAM("[async_comm]: " << code.message()); }
+  inline void init_error(const boost::system::error_code& code) override { ROS_ERROR_STREAM("[async_comm] init: " << code.message()); }
+  inline void runtime_error(const boost::system::error_code& code) override { ROS_ERROR_STREAM("[async_comm] runtime: " << code.message()); }
   inline void fatal(const boost::system::error_code& code) override { ROS_FATAL_STREAM("[async_comm]: " << code.message()); }
 };
 

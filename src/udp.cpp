@@ -89,7 +89,7 @@ bool UDP::do_init()
   }
   catch (boost::system::system_error e)
   {
-    message_handler_.error(e.code());
+    message_handler_.init_error(e.code());
     return false;
   }
 

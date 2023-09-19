@@ -133,7 +133,7 @@ void Comm::async_read_end(const boost::system::error_code &error, size_t bytes_t
   if (error)
   {
     close();
-    message_handler_.error(error);
+    message_handler_.runtime_error(error);
     return;
   }
 
@@ -170,7 +170,7 @@ void Comm::async_write_end(const boost::system::error_code &error, size_t bytes_
   if (error)
   {
     close();
-    message_handler_.error(error);
+    message_handler_.runtime_error(error);
     return;
   }
 
