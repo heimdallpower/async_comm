@@ -129,7 +129,7 @@ public:
     }
     catch (boost::system::system_error e)
     {
-      message_handler_.during_operation(e.code());
+      message_handler_.on_open(e.code());
       return false;
     }
     async_read();
@@ -280,7 +280,7 @@ private:
         return;
       
       close();
-      message_handler_.on_open(error);
+      message_handler_.during_operation(error);
       return;
     }
 
@@ -323,7 +323,7 @@ private:
         return;
       
       close();
-      message_handler_.on_open(error);
+      message_handler_.during_operation(error);
       return;
     }
 
