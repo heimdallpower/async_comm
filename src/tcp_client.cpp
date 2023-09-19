@@ -54,7 +54,7 @@ TCPClient::TCPClient(std::string host, uint16_t port, MessageHandler& message_ha
 
 TCPClient::~TCPClient()
 {
-  do_close();
+  close();
 }
 
 bool TCPClient::is_open()
@@ -62,7 +62,7 @@ bool TCPClient::is_open()
   return socket_.is_open();
 }
 
-bool TCPClient::do_init()
+bool TCPClient::open()
 {
   try
   {
@@ -87,7 +87,7 @@ bool TCPClient::do_init()
   return true;
 }
 
-void TCPClient::do_close()
+void TCPClient::close()
 {
   socket_.close();
 }

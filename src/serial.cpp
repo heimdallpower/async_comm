@@ -54,7 +54,7 @@ Serial::Serial(std::string port, unsigned int baud_rate, MessageHandler& message
 
 Serial::~Serial()
 {
-  do_close();
+  close();
 }
 
 bool Serial::set_baud_rate(unsigned int baud_rate)
@@ -78,7 +78,7 @@ bool Serial::is_open()
   return serial_port_.is_open();
 }
 
-bool Serial::do_init()
+bool Serial::open()
 {
   try
   {
@@ -98,7 +98,7 @@ bool Serial::do_init()
   return true;
 }
 
-void Serial::do_close()
+void Serial::close()
 {
   serial_port_.close();
 }

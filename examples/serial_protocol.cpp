@@ -266,7 +266,7 @@ int main(int argc, char** argv)
   async_comm::Serial serial(port, BAUD_RATE);
   serial.register_receive_callback(&callback);
 
-  if (!serial.init())
+  if (!serial.open())
   {
     std::printf("Failed to initialize serial port\n");
     return 2;
@@ -293,9 +293,6 @@ int main(int argc, char** argv)
   }
 
   auto finish_read = std::chrono::high_resolution_clock::now();
-
-  // close serial port
-  serial.close();
 
   // did we get all the messages back?
   int num_received = 0;

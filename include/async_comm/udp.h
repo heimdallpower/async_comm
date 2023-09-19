@@ -71,14 +71,14 @@ public:
 
   bool is_open() override;
   
+  void close() override;
+  bool open() override;
 private:
   static constexpr auto DEFAULT_BIND_HOST = "localhost";
   static constexpr uint16_t DEFAULT_BIND_PORT = 16140;
   static constexpr auto DEFAULT_REMOTE_HOST = "localhost";
   static constexpr uint16_t DEFAULT_REMOTE_PORT = 16145;
 
-  bool do_init() override;
-  void do_close() override;
   void do_async_read(const boost::asio::mutable_buffers_1 &buffer,
                      boost::function<void(const boost::system::error_code&, size_t)> handler) override;
   void do_async_write(const boost::asio::const_buffers_1 &buffer,

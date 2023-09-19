@@ -52,26 +52,13 @@ Comm::Comm(MessageHandler& message_handler) :
   shutdown_requested_(false),
   write_in_progress_(false)
 {
-}
-
-Comm::~Comm()
-{
-}
-
-bool Comm::init()
-{
-  if (!do_init())
-    return false;
-
   callback_thread_ = std::thread(std::bind(&Comm::process_callbacks, this));
 
   async_read();
   io_thread_ = std::thread(boost::bind(&boost::asio::io_service::run, &this->io_service_));
-
-  return true;
 }
 
-void Comm::close()
+Comm::~Comm()
 {
   // send shutdown signal to callback thread
   {
@@ -81,7 +68,6 @@ void Comm::close()
   condition_variable_.notify_one();
 
   io_service_.stop();
-  do_close();
 
   if (io_thread_.joinable())
   {
@@ -94,8 +80,11 @@ void Comm::close()
   }
 }
 
-void Comm::send_bytes(const uint8_t *src, size_t len)
+bool Comm::send_bytes(const uint8_t *src, size_t len)
 {
+  if (!is_open())
+    return false;
+  
   mutex_lock lock(write_mutex_);
 
   for (size_t pos = 0; pos < len; pos += WRITE_BUFFER_SIZE)
@@ -105,6 +94,7 @@ void Comm::send_bytes(const uint8_t *src, size_t len)
   }
 
   async_write(true);
+  return true;
 }
 
 void Comm::register_receive_callback(std::function<void(const uint8_t*, size_t)> fun)

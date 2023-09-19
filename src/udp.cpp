@@ -58,7 +58,7 @@ UDP::UDP(std::string bind_host, uint16_t bind_port, std::string remote_host, uin
 
 UDP::~UDP()
 {
-  do_close();
+  close();
 }
 
 bool UDP::is_open()
@@ -66,7 +66,7 @@ bool UDP::is_open()
   return socket_.is_open();
 }
 
-bool UDP::do_init()
+bool UDP::open()
 {
   try
   {
@@ -96,7 +96,7 @@ bool UDP::do_init()
   return true;
 }
 
-void UDP::do_close()
+void UDP::close()
 {
   socket_.close();
 }

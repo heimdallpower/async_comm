@@ -92,27 +92,30 @@ public:
    * @brief Initializes and opens the port
    * @return True if the port was succesfully initialized
    */
-  bool init();
+  virtual bool open() = 0;
 
   /**
    * @brief Closes the port
    */
-  void close();
+  virtual void close() = 0;
 
   /**
    * @brief Send bytes from a buffer over the port
    * @param src Address of the buffer
    * @param len Number of bytes to send
    */
-  void send_bytes(const uint8_t * src, size_t len);
+  bool send_bytes(const uint8_t * src, size_t len);
 
   /**
    * @brief Send bytes from a buffer over the port
    * @param bytes the buffer
    */
   template<size_t Len>
-  void send_bytes(const std::array<uint8_t, Len>& bytes)
+  bool send_bytes(const std::array<uint8_t, Len>& bytes)
   {
+    if (!is_open())
+      return false;
+    
     mutex_lock lock(write_mutex_);
     for (size_t pos = 0; pos < Len; pos += WRITE_BUFFER_SIZE)
     {
@@ -120,6 +123,7 @@ public:
       write_queue_.emplace_back(bytes.data() + pos, num_bytes);
     }
     async_write(true);
+    return true;
   }
 
   /**
@@ -163,8 +167,6 @@ protected:
 
   static DefaultMessageHandler default_message_handler_;
 
-  virtual bool do_init() = 0;
-  virtual void do_close() = 0;
   virtual void do_async_read(const boost::asio::mutable_buffers_1 &buffer,
                              boost::function<void(const boost::system::error_code&, size_t)> handler) = 0;
   virtual void do_async_write(const boost::asio::const_buffers_1 &buffer,

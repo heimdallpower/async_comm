@@ -68,12 +68,12 @@ public:
 
   bool is_open() override;
   
+  void close() override;
+  bool open() override;
 private:
   static constexpr auto DEFAULT_HOST = "localhost";
   static constexpr uint16_t DEFAULT_PORT = 16140;
 
-  bool do_init() override;
-  void do_close() override;
   void do_async_read(const boost::asio::mutable_buffers_1 &buffer,
                      boost::function<void(const boost::system::error_code&, size_t)> handler) override;
   void do_async_write(const boost::asio::const_buffers_1 &buffer,

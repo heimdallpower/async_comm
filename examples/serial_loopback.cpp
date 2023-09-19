@@ -85,7 +85,7 @@ int main(int argc, char** argv)
   async_comm::Serial serial(port, 115200);
   serial.register_receive_callback(&callback);
 
-  if (!serial.init())
+  if (!serial.open())
   {
     std::printf("Failed to initialize serial port\n");
     return 2;
@@ -110,9 +110,5 @@ int main(int argc, char** argv)
 
   // wait for all bytes to be received
   std::this_thread::sleep_for(std::chrono::milliseconds(500));
-
-  // close serial port
-  serial.close();
-
   return 0;
 }

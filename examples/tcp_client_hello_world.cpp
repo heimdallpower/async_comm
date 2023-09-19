@@ -71,9 +71,9 @@ int main()
   async_comm::TCPClient tcp_client("localhost", 16140);
   tcp_client.register_receive_callback(&callback);
 
-  if (!tcp_client.init())
+  if (!tcp_client.open())
   {
-    std::cout << "Failed to initialize TCP client" << std::endl;
+    std::cout << "Failed to open TCP client" << std::endl;
     return 1;
   }
 
@@ -84,9 +84,6 @@ int main()
     tcp_client.send_bytes((uint8_t*) msg.data(), msg.size());
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
   }
-
-  // close connection
-  tcp_client.close();
 
   return 0;
 }

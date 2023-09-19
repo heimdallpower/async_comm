@@ -75,9 +75,9 @@ int main()
   async_comm::UDP udp2("localhost", 14625, "localhost", 14620);
   udp2.register_receive_callback(&callback);
 
-  if (!udp1.init() || !udp2.init())
+  if (!udp1.open() || !udp2.open())
   {
-    std::cout << "Failed to initialize UDP ports" << std::endl;
+    std::cout << "Failed to open UDP ports" << std::endl;
     return 1;
   }
 
