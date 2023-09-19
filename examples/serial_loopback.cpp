@@ -82,7 +82,7 @@ int main(int argc, char** argv)
   }
 
   // open serial port
-  async_comm::Serial<1024> serial{std::string{port}, 115200u};
+  async_comm::Serial<> serial{std::string{port}, 115200u};
   serial.register_receive_callback(&callback);
 
   if (!serial.open())

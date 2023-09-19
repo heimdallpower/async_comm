@@ -73,11 +73,11 @@ int main()
   const std::string host2{"localhost"};
   const uint16_t port2{14625};
   
-  async_comm::UDP<1024> udp1(host1, port1, host2, port2);
+  async_comm::UDP<> udp1(host1, port1, host2, port2);
   // open UDPImpl ports
   udp1.register_receive_callback(&callback);
 
-  async_comm::UDP<1024> udp2(host2, port2, host1, port1);
+  async_comm::UDP<> udp2(host2, port2, host1, port1);
   udp2.register_receive_callback(&callback);
 
   if (!udp1.open() || !udp2.open())
