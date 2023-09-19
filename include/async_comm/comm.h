@@ -108,7 +108,10 @@ public:
 
     io_service_.stop();
     if (io_thread_.joinable())
+    {
+      std::cout << "Joining io_thread_\n";
       io_thread_.join();
+    }
     impl_.close();
 
     if (callback_thread_.joinable())
@@ -152,7 +155,10 @@ public:
 
     io_service_.stop();
     if (io_thread_.joinable())
+    {
+      std::cout << "Joining io_thread_\n";
       io_thread_.join();
+    }
     impl_.close();
   };
 
@@ -290,7 +296,7 @@ private:
   {
     if (error)
     {
-      impl_.close();
+      close();
       message_handler_.runtime_error(error);
       return;
     }
@@ -330,7 +336,7 @@ private:
   {
     if (error)
     {
-      impl_.close();
+      close();
       message_handler_.runtime_error(error);
       return;
     }
