@@ -67,10 +67,10 @@ void callback(const uint8_t* buf, size_t len)
 int main()
 {
   // open TCP connection
-  async_comm::TCPClient<> tcp_client(std::string{"localhost"}, static_cast<uint16_t>(16140));
+  async_comm::TCPClient<> tcp_client;
   tcp_client.register_receive_callback(&callback);
 
-  if (!tcp_client.open())
+  if (!tcp_client.open(std::string{"localhost"}, static_cast<uint16_t>(16140)))
   {
     std::cout << "Failed to open TCP client" << std::endl;
     return 1;

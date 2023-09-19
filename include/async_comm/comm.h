@@ -48,6 +48,7 @@
 #include <boost/bind.hpp>
 #include <boost/asio.hpp>
 #include <boost/function.hpp>
+#include <boost/none.hpp>
 
 #include <async_comm/message_handler.h>
 
@@ -86,14 +87,11 @@ public:
    * @brief Set up asynchronous communication base class
    * @param message_handler Custom message handler, or omit for default handler
    */
-  template<class... Args>
-  Comm(Args&&... args):
-  new_data_{false},
-  shutdown_requested_{false},
-  write_in_progress_{false},
-  message_handler_{},
-  io_service_{},
-  impl_{io_service_, std::forward<Args>(args)...},
+  
+  Comm():
+  work_{std::make_unique<boost::asio::io_service::work>(io_service_)},
+  impl_{io_service_},
+  io_thread_{std::thread(boost::bind(&boost::asio::io_service::run, &io_service_))},
   callback_thread_{std::thread(std::bind(&Comm::process_callbacks, this))}
   {}
 
@@ -106,13 +104,11 @@ public:
     }
     condition_variable_.notify_one();
 
-    io_service_.stop();
+    if (impl_.is_open())
+      impl_.close();
+    work_.reset();
     if (io_thread_.joinable())
-    {
-      std::cout << "Joining io_thread_\n";
       io_thread_.join();
-    }
-    impl_.close();
 
     if (callback_thread_.joinable())
       callback_thread_.join();
@@ -124,12 +120,12 @@ public:
    * @brief Initializes and opens the port
    * @return True if the port was succesfully initialized
    */
-  bool open()
+  template<class... Args>
+  bool open(Args&&... args)
   {
-    io_service_.reset();
     try
     {
-      impl_.open();
+      impl_.open(std::forward<Args>(args)...);
     }
     catch (boost::system::system_error e)
     {
@@ -137,10 +133,6 @@ public:
       return false;
     }
     async_read();
-    io_thread_ = std::thread(boost::bind(&boost::asio::io_service::run, &io_service_));
-    std::cout << "[open] called from thread id: " << std::this_thread::get_id() << "\n";
-    std::cout << "[open] io_thread_ thread id: " << io_thread_.get_id() << "\n";
-    std::cout << "[open] callback_thread_ thread id: " << callback_thread_.get_id() << "\n";
     return true;
   }
 
@@ -149,16 +141,6 @@ public:
    */
   void close()
   {
-    std::cout << "[close] called from thread id: " << std::this_thread::get_id() << "\n";
-    std::cout << "[close] io_thread_ thread id: " << io_thread_.get_id() << "\n";
-    std::cout << "[close] callback_thread_ thread id: " << callback_thread_.get_id() << "\n";
-
-    io_service_.stop();
-    if (io_thread_.joinable())
-    {
-      std::cout << "Joining io_thread_\n";
-      io_thread_.join();
-    }
     impl_.close();
   };
 
@@ -172,7 +154,7 @@ public:
     if (!is_open())
       return false;
   
-    mutex_lock lock(write_mutex_);
+    std::lock_guard<std::recursive_mutex> lock(write_mutex_);
 
     for (size_t pos = 0; pos < len; pos += Impl::WRITE_BUFFER_SIZE)
     {
@@ -194,7 +176,7 @@ public:
     if (!is_open())
       return false;
     
-    mutex_lock lock(write_mutex_);
+    std::lock_guard<std::recursive_mutex> lock(write_mutex_);
     for (size_t pos = 0; pos < Len; pos += Impl::WRITE_BUFFER_SIZE)
     {
       const size_t num_bytes{(Len - pos) > Impl::WRITE_BUFFER_SIZE ? Impl::WRITE_BUFFER_SIZE : (Len - pos)};
@@ -277,9 +259,9 @@ private:
     size_t len;
     size_t pos;
 
-    WriteBuffer() : len(0), pos(0) {}
+    WriteBuffer() : len{0u}, pos{0u} {}
 
-    WriteBuffer(const uint8_t * buf, size_t len) : len(len), pos(0)
+    WriteBuffer(const uint8_t * buf, size_t len) : len{len}, pos{0u}
     {
       assert(len <= Impl::WRITE_BUFFER_SIZE); // only checks in debug mode
       memcpy(data, buf, len);
@@ -290,12 +272,13 @@ private:
     size_t nbytes() const { return len - pos; }
   };
 
-  typedef std::lock_guard<std::recursive_mutex> mutex_lock;
-
   void async_read_end(const boost::system::error_code& error, size_t bytes_transferred)
   {
     if (error)
     {
+      if (error.value() == boost::system::errc::operation_canceled)
+        return;
+      
       close();
       message_handler_.runtime_error(error);
       return;
@@ -316,7 +299,7 @@ private:
     if (check_write_state && write_in_progress_)
       return;
 
-    mutex_lock lock(write_mutex_);
+    std::lock_guard<std::recursive_mutex> lock(write_mutex_);
     if (write_queue_.empty())
       return;
 
@@ -336,12 +319,15 @@ private:
   {
     if (error)
     {
+      if (error.value() == boost::system::errc::operation_canceled)
+        return;
+      
       close();
       message_handler_.runtime_error(error);
       return;
     }
 
-    mutex_lock lock(write_mutex_);
+    std::lock_guard<std::recursive_mutex> lock(write_mutex_);
     if (write_queue_.empty())
     {
       write_in_progress_ = false;
@@ -369,7 +355,7 @@ private:
     {
       // wait for either new data or a shutdown request
       std::unique_lock<std::mutex> lock(callback_mutex_);
-      condition_variable_.wait(lock, [this]{ return new_data_ || shutdown_requested_; });
+      condition_variable_.wait(lock, [&]{ return new_data_ || shutdown_requested_; });
 
       // if shutdown requested, end thread execution
       if (shutdown_requested_)
@@ -398,27 +384,28 @@ private:
     }
   }
 
-  bool new_data_;
-  bool shutdown_requested_;
-  bool write_in_progress_;
+  bool new_data_{false};
+  bool shutdown_requested_{false};
+  bool write_in_progress_{false};
 
-  MessageHandlerType message_handler_;
-  boost::asio::io_service io_service_;
+  MessageHandlerType message_handler_{};
+  boost::asio::io_service io_service_{};
+
+  uint8_t read_buffer_[Impl::READ_BUFFER_SIZE]{0u};
+  std::list<ReadBuffer> read_queue_{};
+  std::mutex callback_mutex_{};
+  std::condition_variable condition_variable_{};
+
+  std::list<WriteBuffer> write_queue_{};
+  std::recursive_mutex write_mutex_{};
+
+  std::function<void(const uint8_t *, size_t)> receive_callback_{nullptr};
+  std::vector<std::reference_wrapper<CommListener>> listeners_{};
+
+  std::unique_ptr<boost::asio::io_service::work> work_;
   Impl impl_;
   std::thread io_thread_;
   std::thread callback_thread_;
-
-  uint8_t read_buffer_[Impl::READ_BUFFER_SIZE];
-  std::list<ReadBuffer> read_queue_;
-  std::mutex callback_mutex_;
-  std::condition_variable condition_variable_;
-
-  std::list<WriteBuffer> write_queue_;
-  std::recursive_mutex write_mutex_;
-
-  std::function<void(const uint8_t *, size_t)> receive_callback_ = nullptr;
-  std::vector<std::reference_wrapper<CommListener>> listeners_;
-
 };
 
 } // namespace async_comm

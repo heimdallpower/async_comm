@@ -66,26 +66,21 @@ public:
    * @param port The port on which the TCP server is listening
    * @param message_handler Custom message handler, or omit for default handler
    */
-  TCPClientImpl(
-    boost::asio::io_service& io_service,
-    std::string host = DEFAULT_HOST,
-    uint16_t port = DEFAULT_PORT
-  ):
-  host_(host),
-  port_(port),
-  socket_(io_service)
-  {}
+  TCPClientImpl(boost::asio::io_service& io_service): socket_(io_service) {}
 
   bool is_open() const { return socket_.is_open(); }
   void close() { socket_.close(); }
-  bool open()
+  bool open(
+    std::string host = DEFAULT_HOST,
+    uint16_t port = DEFAULT_PORT
+  )
   {
     using boost::asio::ip::tcp;
 
     tcp::resolver resolver(socket_.get_io_service());
 
-    endpoint_ = *resolver.resolve({tcp::v4(), host_, "", boost::asio::ip::resolver_query_base::numeric_service});
-    endpoint_.port(port_);
+    endpoint_ = *resolver.resolve({tcp::v4(), host, "", boost::asio::ip::resolver_query_base::numeric_service});
+    endpoint_.port(port);
     socket_.open(tcp::v4());
 
     socket_.connect(endpoint_);
@@ -114,9 +109,6 @@ public:
 private:
   static constexpr auto DEFAULT_HOST = "localhost";
   static constexpr uint16_t DEFAULT_PORT = 16140;
-
-  std::string host_;
-  uint16_t port_;
 
   boost::asio::ip::tcp::socket socket_;
   boost::asio::ip::tcp::endpoint endpoint_;

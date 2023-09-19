@@ -62,24 +62,16 @@ public:
    * @param io_service
    *
    */
-  SerialImpl(
-    boost::asio::io_service& io_service,
-    const std::string port,
-    const unsigned int baud_rate
-  ):
-  port_{port},
-  baud_rate_{baud_rate},
-  serial_port_{io_service}
-  {}
+  SerialImpl(boost::asio::io_service& io_service): serial_port_{io_service} {}
 
   bool is_open() const { return serial_port_.is_open(); }
   void close() { serial_port_.close(); }
-  void open()
+  void open(const std::string port, const unsigned int baud_rate)
   {
     using boost::asio::serial_port_base;
 
-    serial_port_.open(port_);
-    serial_port_.set_option(serial_port_base::baud_rate(baud_rate_));
+    serial_port_.open(port);
+    serial_port_.set_option(serial_port_base::baud_rate(baud_rate));
     serial_port_.set_option(serial_port_base::character_size(8));
     serial_port_.set_option(serial_port_base::parity(serial_port_base::parity::none));
     serial_port_.set_option(serial_port_base::stop_bits(serial_port_base::stop_bits::one));
@@ -104,8 +96,6 @@ public:
   }
 
 private:
-  std::string port_;
-  unsigned int baud_rate_;
   boost::asio::serial_port serial_port_;
 };
 

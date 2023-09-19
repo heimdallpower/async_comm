@@ -67,35 +67,30 @@ public:
    * @param remote_port The port on the remote host
    * @param message_handler Custom message handler, or omit for default handler
    */
-  UDPImpl(
-    boost::asio::io_service& io_service,
-    std::string bind_host = DEFAULT_BIND_HOST,
-    uint16_t bind_port = DEFAULT_BIND_PORT,
-    std::string remote_host = DEFAULT_REMOTE_HOST,
-    uint16_t remote_port = DEFAULT_REMOTE_PORT
-  ):
-  bind_host_(bind_host),
-  bind_port_(bind_port),
-  remote_host_(remote_host),
-  remote_port_(remote_port),
+  UDPImpl(boost::asio::io_service& io_service):
   socket_(io_service)
   {}
 
   bool is_open() const { return socket_.is_open(); }
   void close() { socket_.close(); }
-  void open()
+  void open(
+    std::string bind_host = DEFAULT_BIND_HOST,
+    uint16_t bind_port = DEFAULT_BIND_PORT,
+    std::string remote_host = DEFAULT_REMOTE_HOST,
+    uint16_t remote_port = DEFAULT_REMOTE_PORT
+  )
   {
     using boost::asio::ip::udp;
 
     udp::resolver resolver(socket_.get_io_service());
 
-    bind_endpoint_ = *resolver.resolve({udp::v4(), bind_host_, "",
+    bind_endpoint_ = *resolver.resolve({udp::v4(), bind_host, "",
                                         boost::asio::ip::resolver_query_base::numeric_service});
-    bind_endpoint_.port(bind_port_);
+    bind_endpoint_.port(bind_port);
 
-    remote_endpoint_ = *resolver.resolve({udp::v4(), remote_host_, "",
+    remote_endpoint_ = *resolver.resolve({udp::v4(), remote_host, "",
                                           boost::asio::ip::resolver_query_base::numeric_service});
-    remote_endpoint_.port(remote_port_);
+    remote_endpoint_.port(remote_port);
 
     socket_.open(udp::v4());
     socket_.bind(bind_endpoint_);
@@ -125,12 +120,6 @@ private:
   static constexpr uint16_t DEFAULT_BIND_PORT = 16140;
   static constexpr auto DEFAULT_REMOTE_HOST = "localhost";
   static constexpr uint16_t DEFAULT_REMOTE_PORT = 16145;
-
-  std::string bind_host_;
-  uint16_t bind_port_;
-
-  std::string remote_host_;
-  uint16_t remote_port_;
 
   boost::asio::ip::udp::socket socket_;
   boost::asio::ip::udp::endpoint bind_endpoint_;

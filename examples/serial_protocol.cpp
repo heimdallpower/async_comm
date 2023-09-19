@@ -263,10 +263,10 @@ int main(int argc, char** argv)
   }
 
   // open serial port
-  async_comm::Serial<> serial(std::string{port}, static_cast<unsigned int>(BAUD_RATE));
+  async_comm::Serial<> serial;
   serial.register_receive_callback(&callback);
 
-  if (!serial.open())
+  if (!serial.open(std::string{port}, static_cast<unsigned int>(BAUD_RATE)))
   {
     std::printf("Failed to initialize serial port\n");
     return 2;
