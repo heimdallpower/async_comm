@@ -88,14 +88,13 @@ public:
    */
   template<class... Args>
   Comm(Args&&... args):
-  message_handler_{},
-  io_service_{},
   new_data_{false},
   shutdown_requested_{false},
   write_in_progress_{false},
-  io_thread_{std::thread(boost::bind(&boost::asio::io_service::run, &this->io_service_))},
-  callback_thread_{std::thread(std::bind(&Comm::process_callbacks, this))},
-  impl_{io_service_, std::forward<Args>(args)...}
+  message_handler_{},
+  io_service_{},
+  impl_{io_service_, std::forward<Args>(args)...},
+  callback_thread_{std::thread(std::bind(&Comm::process_callbacks, this))}
   {}
 
   ~Comm()
@@ -108,16 +107,12 @@ public:
     condition_variable_.notify_one();
 
     io_service_.stop();
-    impl_.close();
     if (io_thread_.joinable())
-    {
       io_thread_.join();
-    }
+    impl_.close();
 
     if (callback_thread_.joinable())
-    {
       callback_thread_.join();
-    }
   }
 
   bool is_open() { return impl_.is_open(); };
@@ -128,23 +123,38 @@ public:
    */
   bool open()
   {
+    io_service_.reset();
     try
     {
       impl_.open();
-      async_read();
     }
     catch (boost::system::system_error e)
     {
       message_handler_.init_error(e.code());
       return false;
     }
+    async_read();
+    io_thread_ = std::thread(boost::bind(&boost::asio::io_service::run, &io_service_));
+    std::cout << "[open] called from thread id: " << std::this_thread::get_id() << "\n";
+    std::cout << "[open] io_thread_ thread id: " << io_thread_.get_id() << "\n";
+    std::cout << "[open] callback_thread_ thread id: " << callback_thread_.get_id() << "\n";
     return true;
   }
 
   /**
    * @brief Closes the port
    */
-  void close() { impl_.close(); };
+  void close()
+  {
+    std::cout << "[close] called from thread id: " << std::this_thread::get_id() << "\n";
+    std::cout << "[close] io_thread_ thread id: " << io_thread_.get_id() << "\n";
+    std::cout << "[close] callback_thread_ thread id: " << callback_thread_.get_id() << "\n";
+
+    io_service_.stop();
+    if (io_thread_.joinable())
+      io_thread_.join();
+    impl_.close();
+  };
 
   /**
    * @brief Send bytes from a buffer over the port
@@ -382,8 +392,13 @@ private:
     }
   }
 
+  bool new_data_;
+  bool shutdown_requested_;
+  bool write_in_progress_;
+
   MessageHandlerType message_handler_;
   boost::asio::io_service io_service_;
+  Impl impl_;
   std::thread io_thread_;
   std::thread callback_thread_;
 
@@ -391,17 +406,13 @@ private:
   std::list<ReadBuffer> read_queue_;
   std::mutex callback_mutex_;
   std::condition_variable condition_variable_;
-  bool new_data_;
-  bool shutdown_requested_;
 
   std::list<WriteBuffer> write_queue_;
   std::recursive_mutex write_mutex_;
-  bool write_in_progress_;
 
   std::function<void(const uint8_t *, size_t)> receive_callback_ = nullptr;
   std::vector<std::reference_wrapper<CommListener>> listeners_;
 
-  Impl impl_;
 };
 
 } // namespace async_comm
