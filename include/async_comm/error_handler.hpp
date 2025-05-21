@@ -58,6 +58,9 @@ class ErrorHandler
 public:
   virtual void on_open(const boost::system::error_code& code) = 0;
   virtual void during_operation(const boost::system::error_code& code) = 0;
+  virtual void on_read(void) = 0;
+  virtual void on_read_end(const boost::system::error_code& code) = 0;
+  virtual void on_write_end(const boost::system::error_code& code) = 0;
 };
 
 /**
@@ -67,8 +70,11 @@ public:
 class DefaultErrorHandler : public ErrorHandler
 {
 public:
-  inline void on_open(const boost::system::error_code &code) override { std::cerr << "[async_comm][on open ERROR]: " << code.message() << std::endl; }
+  inline void on_open(const boost::system::error_code& code) override { std::cerr << "[async_comm][on open ERROR]: " << code.message() << std::endl; }
   inline void during_operation(const boost::system::error_code& code) override { std::cerr << "[async_comm][during operation ERROR]: " << code.message() << std::endl; }
+  inline void on_read(void) override { std::cerr << "[async_comm][on_read ERROR]" << std::endl; }
+  inline void on_read_end(const boost::system::error_code& code) override { std::cerr << "[async_comm][on_read_end ERROR]: " << code.message() << std::endl; }
+  inline void on_write_end(const boost::system::error_code& code) override { std::cerr << "[async_comm][on_write_end ERROR]: " << code.message() << std::endl; }
 };
 
 } // namespace async_comm

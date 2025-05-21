@@ -228,7 +228,10 @@ private:
   void async_read()
   {
     if (!is_open())
+    {
+      message_handler_.on_read();
       return;
+    }
 
     impl_.do_async_read(
       boost::asio::buffer(read_buffer_, Impl::READ_BUFFER_SIZE),
@@ -277,7 +280,10 @@ private:
     if (error)
     {
       if (error.value() == boost::system::errc::operation_canceled)
+      {
+        message_handler_.on_read_end(error);
         return;
+      }
       
       close();
       message_handler_.during_operation(error);
@@ -320,7 +326,10 @@ private:
     if (error)
     {
       if (error.value() == boost::system::errc::operation_canceled)
+      {
+        message_handler_.on_write_end(error);
         return;
+      }
       
       close();
       message_handler_.during_operation(error);
