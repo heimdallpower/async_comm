@@ -89,39 +89,39 @@ private:
     template<typename T>
     void start(const T& function)
     {
-      running = true;
-      thread = std::thread([&](void) -> void {
+      running_ = true;
+      thread_ = std::thread([&](void) -> void {
         try {
           function();
         } catch (const std::exception& e) {
-          last_exception = std::make_unique<std::exception>(e);
+          last_exception_ = std::make_unique<std::exception>(e);
         }
-        running = false;
+        running_ = false;
       });
     }
 
     void conditional_join(void)
     {
-      if (thread.joinable())
-        thread.join();
+      if (thread_.joinable())
+        thread_.join();
     }
 
-    bool is_running(void) const { return running; }
+    bool is_running(void) const { return running_; }
 
     bool load_exception(std::exception& out) const
     {
-      if (last_exception)
+      if (last_exception_)
       {
-        out = *last_exception;
+        out = *last_exception_;
         return true;
       }
       return false;
     }
 
   private:
-    std::atomic_bool running{false};
-    std::unique_ptr<std::exception> last_exception;
-    std::thread thread;
+    std::atomic_bool running_{false};
+    std::unique_ptr<std::exception> last_exception_;
+    std::thread thread_;
   };
 public:
   /**
