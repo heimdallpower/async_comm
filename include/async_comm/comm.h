@@ -107,9 +107,9 @@ private:
         thread.join();
     }
 
-    const bool is_running(void) const { return running; }
+    bool is_running(void) const { return running; }
 
-    const bool load_exception(std::exception& out)
+    bool load_exception(std::exception& out)
     {
       if (last_exception)
       {
