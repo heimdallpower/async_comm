@@ -87,7 +87,7 @@ private:
   {
   public:
     template<typename T>
-    void start(const T& function)
+    void start(const T function)
     {
       running_ = true;
       thread_ = std::thread([&](void) -> void {
