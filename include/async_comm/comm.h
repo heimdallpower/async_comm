@@ -134,7 +134,7 @@ public:
   work_{std::make_unique<boost::asio::io_service::work>(io_service_)},
   impl_{io_service_}
   {
-    io_thread_.start(std::bind(&Comm::run_io_service, this));
+    io_thread_.start(boost::bind(&boost::asio::io_service::run, &io_service_));
     callback_thread_.start(std::bind(&Comm::process_callbacks, this));
   }
 
@@ -450,11 +450,6 @@ private:
         local_queue.pop_front();
       }
     }
-  }
-
-  void run_io_service(void)
-  {
-    io_service_.run();
   }
 
   bool new_data_{false};
