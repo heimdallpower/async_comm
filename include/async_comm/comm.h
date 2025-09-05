@@ -89,10 +89,9 @@ private:
     template<typename T>
     void start(const T& function)
     {
-      running = false;
+      running = true;
       thread = std::thread([&](void) -> void {
         try {
-          running = true;
           function();
         } catch (const std::exception& e) {
           last_exception = std::make_unique<std::exception>(e);
