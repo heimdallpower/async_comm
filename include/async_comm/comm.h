@@ -87,12 +87,14 @@ private:
   {
   public:
     template<typename T>
-    void start(const T function)
+    void start(const T& function)
     {
+      static T f{function};
+
       running_ = true;
       thread_ = std::thread([&](void) -> void {
         try {
-          function();
+          f();
         } catch (const std::exception& e) {
           last_exception_ = std::make_unique<std::exception>(e);
         }
