@@ -109,7 +109,7 @@ private:
 
     bool is_running(void) const { return running; }
 
-    bool load_exception(std::exception& out)
+    bool load_exception(std::exception& out) const
     {
       if (last_exception)
       {
