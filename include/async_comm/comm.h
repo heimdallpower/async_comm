@@ -86,8 +86,6 @@ private:
   class CommThread
   {
   public:
-    CommThread(const std::string& name) : name{name} {}
-
     template<typename T>
     void start(const T& function)
     {
@@ -107,13 +105,7 @@ private:
     void conditional_join(void)
     {
       if (thread_.joinable())
-      {
-        std::cout << "Joining " << name << " thread\n";
         thread_.join();
-        std::cout << name << " thread joined\n";
-      }
-      else
-        std::cout << name << " thread not joinable\n";
     }
 
     bool is_running(void) const { return running_; }
@@ -129,7 +121,6 @@ private:
     }
 
   private:
-    const std::string name;
     std::atomic_bool running_{false};
     std::unique_ptr<std::exception> last_exception_;
     std::thread thread_;
@@ -142,9 +133,7 @@ public:
   
   Comm():
   work_{std::make_unique<boost::asio::io_service::work>(io_service_)},
-  impl_{io_service_},
-  io_thread_{"IO"},
-  callback_thread_{"callback"}
+  impl_{io_service_}
   {
     io_thread_.start(boost::bind(&boost::asio::io_service::run, &io_service_));
     callback_thread_.start(std::bind(&Comm::process_callbacks, this));
