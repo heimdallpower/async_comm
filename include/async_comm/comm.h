@@ -82,6 +82,49 @@ public:
 template<typename Impl, typename ErrorHandlerType = DefaultErrorHandler>
 class Comm
 {
+private:
+  class CommThread
+  {
+  public:
+    template<typename T>
+    void start(const T& function)
+    {
+      static T f{function};
+
+      running_ = true;
+      thread_ = std::thread([&](void) -> void {
+        try {
+          f();
+        } catch (const std::exception& e) {
+          last_exception_ = std::make_unique<std::exception>(e);
+        }
+        running_ = false;
+      });
+    }
+
+    void conditional_join(void)
+    {
+      if (thread_.joinable())
+        thread_.join();
+    }
+
+    bool is_running(void) const { return running_; }
+
+    bool load_exception(std::exception& out) const
+    {
+      if (last_exception_)
+      {
+        out = *last_exception_;
+        return true;
+      }
+      return false;
+    }
+
+  private:
+    std::atomic_bool running_{false};
+    std::unique_ptr<std::exception> last_exception_;
+    std::thread thread_;
+  };
 public:
   /**
    * @brief Set up asynchronous communication base class
@@ -90,10 +133,11 @@ public:
   
   Comm():
   work_{std::make_unique<boost::asio::io_service::work>(io_service_)},
-  impl_{io_service_},
-  io_thread_{std::thread(boost::bind(&boost::asio::io_service::run, &io_service_))},
-  callback_thread_{std::thread(std::bind(&Comm::process_callbacks, this))}
-  {}
+  impl_{io_service_}
+  {
+    io_thread_.start(boost::bind(&boost::asio::io_service::run, &io_service_));
+    callback_thread_.start(std::bind(&Comm::process_callbacks, this));
+  }
 
   ~Comm()
   {
@@ -106,12 +150,10 @@ public:
 
     if (impl_.is_open())
       impl_.close();
-    work_.reset();
-    if (io_thread_.joinable())
-      io_thread_.join();
 
-    if (callback_thread_.joinable())
-      callback_thread_.join();
+    work_.reset();
+    io_thread_.conditional_join();
+    callback_thread_.conditional_join();
   }
 
   bool is_open() { return impl_.is_open(); };
@@ -222,6 +264,26 @@ public:
   void register_listener(CommListener &listener)
   {
     listeners_.push_back(listener);
+  }
+
+  bool io_thread_running(void) const
+  {
+    return io_thread_.is_running();
+  }
+
+  bool io_thread_load_exception(std::exception& out) const
+  {
+    return io_thread_.load_exception(out);
+  }
+
+  bool callback_thread_running(void) const
+  {
+    return callback_thread_.is_running();
+  }
+
+  bool callback_thread_load_exception(std::exception& out) const
+  {
+    return callback_thread_.load_exception(out);
   }
 private:
 
@@ -368,9 +430,7 @@ private:
 
       // if shutdown requested, end thread execution
       if (shutdown_requested_)
-      {
         break;
-      }
 
       // move data to local buffer
       local_queue.splice(local_queue.end(), read_queue_);
@@ -413,8 +473,8 @@ private:
 
   std::unique_ptr<boost::asio::io_service::work> work_;
   Impl impl_;
-  std::thread io_thread_;
-  std::thread callback_thread_;
+  CommThread io_thread_;
+  CommThread callback_thread_;
 };
 
 } // namespace async_comm
