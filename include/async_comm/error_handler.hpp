@@ -73,8 +73,9 @@ public:
   inline void on_open(const boost::system::error_code& code) override { std::cerr << "[async_comm][on open ERROR]: " << code.message() << std::endl; }
   inline void during_operation(const boost::system::error_code& code) override { std::cerr << "[async_comm][during operation ERROR]: " << code.message() << std::endl; }
   inline void on_read(void) override { std::cerr << "[async_comm][on_read ERROR]" << std::endl; }
-  inline void on_read_end(const boost::system::error_code& code) override { std::cerr << "[async_comm][on_read_end ERROR]: " << code.message() << std::endl; }
-  inline void on_write_end(const boost::system::error_code& code) override { std::cerr << "[async_comm][on_write_end ERROR]: " << code.message() << std::endl; }
+  // Comm only calls these when close() cancels a pending read or write, which is not an error.
+  inline void on_read_end(const boost::system::error_code&) override {}
+  inline void on_write_end(const boost::system::error_code&) override {}
 };
 
 } // namespace async_comm
